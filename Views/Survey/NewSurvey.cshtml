@@ -1,0 +1,558 @@
+﻿@{
+    Layout = "_UserLayout";
+}
+
+<style>
+    .left-menu {
+        position: fixed;
+        left: 0;
+        width: 200px;
+        background-color: #333;
+        color: #fff;
+        padding: 20px;
+    }
+
+    #expand-menu-btn {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+
+    .icon {
+        margin-right: 5px;
+    }
+
+    /* Style for the expanded menu */
+    .left-menu.expanded {
+        width: 300px;
+    }
+
+
+    #form-container {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ccc;
+        padding: 10px;
+    }
+
+    .form-element {
+        margin: 5px;
+        border: 1px solid #eee;
+        padding: 5px;
+    }
+
+    .editable {
+        cursor: pointer;
+    }
+
+        .editable:hover {
+            background-color: #f5f5f5;
+        }
+
+    .draggable {
+        cursor: grab;
+    }
+
+        .draggable:hover {
+            cursor: grabbing;
+        }
+
+    .left-menu {
+        transition: width 0.5s ease;
+    }
+
+    /* Highlighting the drop target area */
+    #survey-elements.highlight {
+        background-color: #e9ecef;
+        border: 2px dashed #adb5bd;
+    }
+
+</style>
+
+<div class="left-menu">
+    <button id="expand-menu-btn">
+        <span class="icon">+</span> Add survey elements
+    </button>
+    <div class="form-elements" style="display: none;">
+        <div class="form-group" draggable="true" data-type="text">
+            <label>TextBox</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="dropdown">
+            <label>Dropdown</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="radio">
+            <label>Radio Button</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="phone">
+            <label>Phone Number</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="email">
+            <label>Email</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="rating">
+            <label>Rating</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="yesno">
+            <label>Yes/No</label>
+        </div>
+        <div class="form-group" draggable="true" data-type="fillblank">
+            <label>Fill in the Blanks</label>
+        </div>
+
+
+    </div>
+</div>
+<div id="surveyTimer" style="color: red; font-size: 20px;"></div>
+
+<div class="container mt-3">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header" id="survey-box">
+                    Survey Box
+                </div>
+                <div class="card-body" id="survey-elements">
+                    @if (!ViewContext.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+                        </div>
+                    }
+                    <!-- Survey elements will be dynamically added here -->
+                    <p class="instruction">Drag and Drop here the elements here</p>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" id="submitSurvey" class="btn btn-success btn-block">Submit Survey</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const expandMenuBtn = document.getElementById("expand-menu-btn");
+        const leftMenu = document.querySelector(".left-menu");
+        const formElements = document.querySelector(".form-elements");
+        const surveyElementsContainer = document.getElementById("survey-elements");
+
+        expandMenuBtn.addEventListener("click", function () {
+            leftMenu.classList.toggle("expanded");
+            if (leftMenu.classList.contains("expanded")) {
+                formElements.style.display = "block";
+            } else {
+                formElements.style.display = "none";
+            }
+        });
+
+        const draggables = document.querySelectorAll(".form-group[draggable='true']");
+
+        draggables.forEach(function (draggable) {
+            draggable.addEventListener("dragstart", function (event) {
+                const dataType = draggable.getAttribute("data-type");
+                event.dataTransfer.setData("text/plain", dataType);
+            });
+        });
+
+        surveyElementsContainer.addEventListener("dragover", function (event) {
+            event.preventDefault();
+        });
+
+        surveyElementsContainer.addEventListener("drop", function (event) {
+            event.preventDefault();
+            const dataType = event.dataTransfer.getData("text/plain");
+
+            const formGroup = document.createElement("div");
+            formGroup.classList.add("form-group", "draggable-item");
+
+            switch (dataType) {
+                case "text":
+                    addTextField(formGroup);
+                    break;
+                case "radio":
+                    addRadioButton(formGroup);
+                    break;
+                case "dropdown":
+                    addDropdown(formGroup);
+                    break;
+                case "phone":
+                    addPhoneNumberField(formGroup);
+                    break;
+                case "email":
+                    addEmailField(formGroup);
+                    break;
+                case "rating":
+                    addRatingField(formGroup);
+                    break;
+                case "yesno":
+                    addYesNoField(formGroup);
+                    break;
+                case "fillblank":
+                    addFillInBlanksField(formGroup);
+                    break;
+
+            }
+
+            surveyElementsContainer.appendChild(formGroup);
+        });
+        surveyElementsContainer.addEventListener("dragenter", function (event) {
+            event.preventDefault();
+            surveyElementsContainer.classList.add("highlight");
+        });
+
+        surveyElementsContainer.addEventListener("dragleave", function (event) {
+            event.preventDefault();
+            surveyElementsContainer.classList.remove("highlight");
+        });
+
+        // Handle the drop event more interactively
+        surveyElementsContainer.addEventListener("drop", function (event) {
+            event.preventDefault();
+            surveyElementsContainer.classList.remove("highlight");
+
+            // ... [existing drop event handling code] ...
+        });
+
+
+        function addTextField(formGroup) {
+            const label = createEditableLabel("Text:");
+            const input = document.createElement("input");
+            input.setAttribute("type", "text");
+            input.classList.add("form-control");
+            formGroup.appendChild(label);
+            formGroup.appendChild(input);
+        }
+
+        function addRadioButton(formGroup) {
+            const label = createEditableLabel("Radio:");
+
+            const radio1 = createRadioButton("Option 1");
+            const radio2 = createRadioButton("Option 2");
+            const radio3 = createRadioButton("Option 3");
+
+            formGroup.appendChild(label);
+            formGroup.appendChild(radio1);
+            formGroup.appendChild(radio2);
+            formGroup.appendChild(radio3);
+        }
+
+        function addDropdown(formGroup) {
+            const label = createEditableLabel("Dropdown:");
+
+            const optionInput = document.createElement("input");
+            optionInput.setAttribute("type", "text");
+            optionInput.classList.add("form-control", "dropdown-option", "mt-1", "col-9");
+            optionInput.placeholder = "Enter Option";
+            optionInput.style.display = "block";
+
+            const addOptionBtn = document.createElement("button");
+            addOptionBtn.textContent = "Add Option";
+            addOptionBtn.classList.add("btn", "btn-primary", "add-option-btn", "mt-1");
+            addOptionBtn.style.marginLeft = "10px";
+
+            const optionWrapper = document.createElement("div");
+            optionWrapper.style.display = "flex";
+            optionWrapper.appendChild(optionInput);
+            optionWrapper.appendChild(addOptionBtn);
+
+            const select = document.createElement("select");
+            select.classList.add("form-control", "dropdown-select");
+
+            formGroup.appendChild(label);
+            formGroup.appendChild(select);
+            formGroup.appendChild(optionWrapper);
+
+            addOptionBtn.addEventListener("click", function () {
+                const optionValue = optionInput.value.trim();
+                if (optionValue !== "") {
+                    const option = document.createElement("option");
+                    option.textContent = optionValue;
+                    select.appendChild(option);
+                    optionInput.value = ""; // Clear the text input
+                }
+            });
+        }
+
+        function createEditableLabel(labelText) {
+            const label = document.createElement("label");
+            label.contentEditable = true;
+            label.textContent = labelText;
+            return label;
+        }
+
+        function createRadioButton(labelText) {
+            const radio = document.createElement("input");
+            radio.setAttribute("type", "radio");
+            radio.setAttribute("name", "radio");
+            radio.classList.add("form-check-input");
+            const label = createEditableLabel(labelText);
+            const radioContainer = document.createElement("div");
+            radioContainer.classList.add("form-check");
+            radioContainer.appendChild(radio);
+            radioContainer.appendChild(label);
+            return radioContainer;
+        }
+        function addPhoneNumberField(formGroup) {
+            const label = createEditableLabel("Phone Number:");
+            const input = document.createElement("input");
+            input.setAttribute("type", "tel");
+            input.classList.add("form-control");
+            formGroup.appendChild(label);
+            formGroup.appendChild(input);
+        }
+        function addEmailField(formGroup) {
+            const label = createEditableLabel("Email:");
+            const input = document.createElement("input");
+            input.setAttribute("type", "email");
+            input.classList.add("form-control");
+            formGroup.appendChild(label);
+            formGroup.appendChild(input);
+        }
+        function addRatingField(formGroup) {
+            const label = createEditableLabel("Rating:");
+            formGroup.appendChild(label);
+            for (let i = 1; i <= 5; i++) {
+                const radio = document.createElement("input");
+                radio.setAttribute("type", "radio");
+                radio.setAttribute("name", "rating");
+                radio.setAttribute("value", i);
+                radio.classList.add("form-check-input");
+                const radioLabel = createEditableLabel(`${i} Star`);
+                const radioContainer = document.createElement("div");
+                radioContainer.classList.add("form-check");
+                radioContainer.appendChild(radio);
+                radioContainer.appendChild(radioLabel);
+                formGroup.appendChild(radioContainer);
+        }
+        function addYesNoField(formGroup) {
+            console.log("Adding Yes/NO Field");
+            const label = createEditableLabel("Yes/No Question:");
+            formGroup.appendChild(label);
+
+            // Create and append the Yes option
+            const yesOption = document.createElement("input");
+            yesOption.setAttribute("type", "radio");
+            yesOption.setAttribute("name", "yesNoOption");
+            yesOption.setAttribute("value", "Yes");
+            formGroup.appendChild(yesOption);
+            formGroup.appendChild(document.createTextNode(" Yes"));
+
+            // Create and append the No option
+            const noOption = document.createElement("input");
+            noOption.setAttribute("type", "radio");
+            noOption.setAttribute("name", "yesNoOption");
+            noOption.setAttribute("value", "No");
+            formGroup.appendChild(noOption);
+            formGroup.appendChild(document.createTextNode(" No"));
+        }
+        function createRadioButton(labelText, groupName) {
+            const radio = document.createElement("input");
+            radio.setAttribute("type", "radio");
+            radio.setAttribute("name", groupName);
+            radio.classList.add("form-check-input");
+            const label = createEditableLabel(labelText);
+            const radioContainer = document.createElement("div");
+            radioContainer.classList.add("form-check");
+            radioContainer.appendChild(radio);
+            radioContainer.appendChild(label);
+            return radioContainer;
+        }
+        function addFillInBlanksField(formGroup) {
+            const label = createEditableLabel("Fill in the Blank Question:");
+            formGroup.appendChild(label);
+
+            const input = document.createElement("input");
+            input.setAttribute("type", "text");
+            input.classList.add("form-control");
+            formGroup.appendChild(input);
+        }
+
+
+
+        }
+
+
+
+
+
+        surveyElementsContainer.addEventListener("click", function (event) {
+            if (event.target.classList.contains("delete-btn")) {
+                const item = event.target.closest(".draggable-item");
+                item.remove();
+            }
+        });
+
+        document.getElementById("submitSurvey").addEventListener("click", function () {
+            // Example of extracting form data from dynamic form elements
+            const formData = {};
+
+            // Select all draggable items inside the survey container
+            const draggableItems = document.querySelectorAll("#survey-elements .draggable-item");
+
+            draggableItems.forEach(function (item, index) {
+                const label = item.querySelector("label"); // Select the label element within the draggable item
+                let labelText = label.textContent.trim(); // Extract the label text and trim any leading/trailing spaces
+
+                // If the label text is empty, get the content from the label element itself
+                if (labelText === "") {
+                    labelText = label.innerHTML.trim();
+                }
+
+                // Check if the item contains a select element
+                const select = item.querySelector("select");
+                if (select) {
+                    const options = Array.from(select.options).map(option => option.text);
+                    formData[`dropdown_${index}`] = { label: labelText, selectedValue: select.value, options: options };
+                    return; // Move to the next draggable item
+                }
+
+                // Check if the item contains radio buttons
+                const radioButtons = item.querySelectorAll("input[type='radio']");
+                if (radioButtons.length > 0) {
+                    const options = {};
+                    const groupName = radioButtons[0].getAttribute('name'); // Extract the name attribute from the first radio button
+
+                    radioButtons.forEach(function (radio) {
+                        const optionValue = radio.value;
+                        const optionLabel = radio.nextElementSibling.textContent.trim();
+                        options[optionValue] = optionLabel;
+                    });
+
+                    formData[`radio_${index}`] = { label: labelText, options: options };
+                    return; // Move to the next draggable item
+                }
+
+
+                // Check if the item contains an input element
+                const input = item.querySelector("input");
+                if (input) {
+                    formData[`textbox_${index}`] = { label: labelText, value: input.value };
+                    return; // Move to the next draggable item
+                }
+            });
+
+
+            // Now you have the formData object containing the form data, you can send it to the server
+            console.log(formData);
+            // Use fetch or any other method to send the formData object to the server
+            fetch('/Survey/NewSurvey', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to submit form.');
+                    }
+                    return response.json(); // Parse the JSON response
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Redirect to the specified URL
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        console.error('Form submission failed.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+     
+        document.addEventListener("DOMContentLoaded", function () {
+            var timeLeft = 300; // Time in seconds (5 minutes)
+            var timerElement = document.getElementById('surveyTimer');
+            var timerId;
+
+            function updateTimer() {
+                var minutes = Math.floor(timeLeft / 60);
+                var seconds = timeLeft % 60;
+                timerElement.textContent = `Time left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    // Automatically submit the form, or inform the user that the time is up
+                    document.getElementById('submitSurvey').click(); // Simulate form submission
+                    // Alternatively, you could alert the user or redirect them
+                    // alert("Time's up! The form was submitted automatically.");
+                    // window.location.href = '/time-up';
+                } else {
+                    timeLeft--;
+                }
+            }
+
+            timerId = setInterval(updateTimer, 1000);
+        });
+
+   });
+
+
+
+        // JavaScript code to send form data to the controller when the button is clicked
+        // document.getElementById("submitSurvey").addEventListener("click", function () {
+        //     // Example of extracting form data from dynamic form elements
+        //     const formData = {};
+
+        //     // Select all draggable items inside the survey container
+        //     const draggableItems = document.querySelectorAll("#survey-elements .draggable-item");
+
+        //     draggableItems.forEach(function (item, index) {
+        //         const label = item.querySelector("label"); // Select the label element within the draggable item
+        //         let labelText = label.textContent.trim(); // Extract the label text and trim any leading/trailing spaces
+
+        //         // If the label text is empty, get the content from the label element itself
+        //         if (labelText === "") {
+        //             labelText = label.innerHTML.trim();
+        //         }
+
+        //         const input = item.querySelector("input"); // Select the input element within the draggable item
+        //         const select = item.querySelector("select"); // Select the select element within the draggable item
+        //         const radioButtons = item.querySelectorAll("input[type='radio']"); // Select all radio button inputs within the draggable item
+
+        //         if (input) {
+        //             formData[`textbox_${index}`] = { label: labelText, value: input.value }; // Extract value from the input element
+        //         } else if (select) {
+        //             const options = Array.from(select.options).map(option => option.text);
+        //             formData[`dropdown_${index}`] = { label: labelText, selectedValue: select.value, options: options };
+        //         } else if (radioButtons.length > 0) {
+        //             let selectedValue = "";
+        //             radioButtons.forEach(function (radio) {
+        //                 if (radio.checked) {
+        //                     selectedValue = radio.value;
+        //                 }
+        //             });
+        //             formData[`radio_${index}`] = { label: labelText, selectedValue: selectedValue };
+        //         }
+        //     });
+
+
+        //     // Now you have the formData object containing the form data, you can send it to the server
+        //     console.log(formData); // For testing purposes, you can log the form data to the console
+
+        //     // Use fetch or any other method to send the formData object to the server
+        //     // fetch('/Survey/NewSurvey', {
+        //     //     method: 'POST',
+        //     //     headers: {
+        //     //         'Content-Type': 'application/json'
+        //     //     },
+        //     //     body: JSON.stringify(formData)
+        //     // })
+        //     //     .then(response => {
+        //     //         if (!response.ok) {
+        //     //             throw new Error('Failed to submit form.');
+        //     //         }
+        //     //         console.log('Form submitted successfully.');
+        //     //     })
+        //     //     .catch(error => {
+        //     //         console.error('Error:', error);
+        //     //     });
+        // });
+    });
+
+</script>
